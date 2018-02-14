@@ -13,7 +13,7 @@
     "lint": "NODE_ENV=test tslint -c tslint.json \"src/**/*.{js,ts,jsx,tsx}\"",
     "lint-fix": "NODE_ENV=test tslint --fix \"src/**/*.{js,ts,jsx,tsx}\"",
     "test": "./run.sh 'npm run lint' 'npm run unit-test'",
-    "unit-test": "mocha -r test/setup.js --opts test/mocha.opts",
+    "unit-test": "nyc mocha -r test/setup.js --opts test/mocha.opts",
     "dev": "mocha --watch -r test/setup.js --opts test/mocha.opts",
     "debug-tests": "mocha -r test/setup.js --opts test/mocha.opts --inspect-brk"
   },
@@ -51,6 +51,7 @@
     "jss": "8.1.0",
     "mocha": "^4.0.1",
     "mocha-webpack": "^1.0.0-rc.1",
+    "nyc": "^11.4.1",
     "react-addons-test-utils": "15.6.2",
     "react-dom": "16.2.0",
     "react-test-renderer": "16.2.0",
@@ -65,12 +66,29 @@
     "webpack-node-externals": "1.6.0"
   },
   "peerDependencies": {
-    "axios": "^0.16.0",
+    "axios": "^0.16.0 || ^0.17.0",
     "deep-freeze-strict": "^1.1.0",
     "history": "^4.6.0",
     "js-cookie": "^2.1.4",
     "prop-types": "^15.0.0-0 || ^16.0.0-0",
     "ramda": "^0.25.0",
     "react": "^16.2.0"
+  },
+  "nyc": {
+    "include": [
+      "src/**/*.{ts,tsx}"
+    ],
+    "exclude": [
+      "**/*_test.{ts,tsx}"
+    ],
+    "extension": [
+      ".ts",
+      ".tsx"
+    ],
+    "reporter": [
+      "text-summary",
+      "html",
+      "lcov"
+    ]
   }
 }
