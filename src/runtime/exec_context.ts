@@ -4,8 +4,9 @@ import {
 } from 'ramda';
 
 import { Container, DelegateDef, PARENT } from '../core';
-import { cmdName, intercept, notify } from '../dev_tools';
+import { cmdName } from '../dev_tools';
 import * as Environment from '../environment';
+import { notify } from '../instrumenter';
 import Message, { MessageConstructor } from '../message';
 import { mapResult, reduceUpdater, replace, safeStringify, toArray, trap } from '../util';
 import StateManager, { Callback, Config } from './state_manager';
@@ -190,7 +191,7 @@ export default class ExecContext<M> {
     const wrapInit = (props: string[]) => pipe(pick(props), map(pipe(fn => fn.bind(this), initialize)));
     const errLog = error(ctrEnv.log);
     const isRoot: boolean = !parent || ExecContext.isPartial(parent);
-    const stateMgr: StateManager = isRoot ? intercept(ctrEnv.stateManager(container)) : null;
+    const stateMgr: StateManager = isRoot ? ctrEnv.stateManager(container) : null;
     const getState = stateMgr ? stateMgr.get.bind(stateMgr) : config => parent.state(config || { path });
 
     freeze(assign(this, {
