@@ -14,6 +14,14 @@ export type ViewWrapperProps<M> = {
   env?: Environment;
 };
 
+export type State = {
+  componentError?: Error;
+};
+
+export type Context<M> = {
+  execContext: ExecContext<M>;
+};
+
 /**
  * Component used to wrap container-defined view, for managing state and injecting
  * container-bound props.
@@ -22,8 +30,7 @@ export type ViewWrapperProps<M> = {
  * itself with `execContext` in its children's contexts.
  */
 
-export default class ViewWrapper<M> extends React.Component<ViewWrapperProps<M>, any> {
-
+export default class ViewWrapper<M> extends React.Component<ViewWrapperProps<M>, State> {
   public static contextTypes = { execContext: PropTypes.object };
 
   public static childContextTypes = { execContext: PropTypes.object };
@@ -45,6 +52,38 @@ export default class ViewWrapper<M> extends React.Component<ViewWrapperProps<M>,
 
   public unsubscribe: () => void;
 
+  public state: State = {};
+
+  public context: Context<M>;
+
+  constructor(props: ViewWrapperProps<M>, context: Context<M>) {
+    super(props, context);
+
+    const { container, delegate, env, childProps } = props;
+    const parent = context.execContext;
+
+    this.execContext = new ExecContext({ env, parent, container, delegate });
+
+    if (this.dispatchLifecycleMessage(Activate, props)) {
+      return;
+    }
+
+    const state = this.execContext.state();
+    this.state = this.execContext.push(merge(state, pick(keys(state), childProps)));
+  }
+
+  public componentDidMount() {
+    const { delegate } = this.props;
+    const parent = this.context.execContext;
+
+    if (delegate && !parent) {
+      const msg = `Attempting to delegate state property '${delegate.toString()}' with no parent container`;
+      console.warn(msg); // tslint:disable-line:no-console
+    }
+
+    this.unsubscribe = this.execContext.subscribe(this.setState.bind(this));
+  }
+
   public getChildContext() {
     return { execContext: this.execContext };
   }
@@ -52,25 +91,6 @@ export default class ViewWrapper<M> extends React.Component<ViewWrapperProps<M>,
   public dispatchLifecycleMessage<M extends MessageConstructor>(msg: M, props: any): boolean {
     const { container, childProps } = props, propList = omit(['emit', 'children']);
     return container.accepts(msg) && !!this.execContext.dispatch(new msg(propList(childProps), { shallow: true }));
-  }
-
-  public componentWillMount() {
-    const parent = this.context.execContext;
-    const { container, delegate, env, childProps } = this.props;
-
-    if (delegate && !parent) {
-      const msg = `Attempting to delegate state property '${delegate.toString()}' with no parent container`;
-      console.warn(msg); // tslint:disable-line:no-console
-    }
-    this.execContext = new ExecContext({ env, parent, container, delegate });
-    this.unsubscribe = this.execContext.subscribe(this.setState.bind(this));
-
-    if (this.dispatchLifecycleMessage(Activate, this.props)) {
-      return;
-    }
-
-    const state = this.execContext.state();
-    this.setState(this.execContext.push(merge(state, pick(keys(state), childProps))));
   }
 
   public componentDidUpdate(prev) {
@@ -87,7 +107,7 @@ export default class ViewWrapper<M> extends React.Component<ViewWrapperProps<M>,
     this.execContext.destroy();
   }
 
-  public unstable_handleError(e) {
+  public componentDidCatch(e) {
     // tslint:disable-next-line:no-console
     console.error('Failed to compile React component\n', e);
     this.setState({ componentError: e });
